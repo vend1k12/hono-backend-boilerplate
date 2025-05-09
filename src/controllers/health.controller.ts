@@ -12,7 +12,11 @@ export class HealthController extends BaseController {
 	 * Базовая проверка работоспособности API
 	 */
 	public static async getHealth(c: Context) {
-		return this.success(c, null, 'API работает!')
+		return c.json({
+			status: 'success' as const,
+			message: 'API работает!',
+			data: null,
+		})
 	}
 
 	/**
@@ -29,9 +33,10 @@ export class HealthController extends BaseController {
 				dbResponseTime: dbDuration,
 			})
 
-			return this.success(
-				c,
-				{
+			return c.json({
+				status: 'success' as const,
+				message: 'Все системы работают',
+				data: {
 					checks: {
 						api: {
 							status: 'ok',
@@ -42,14 +47,14 @@ export class HealthController extends BaseController {
 						},
 					},
 				},
-				'Все системы работают',
-			)
+			})
 		} catch (error) {
-			return this.error(
-				c,
-				'Ошибка при проверке работоспособности системы',
+			return c.json(
+				{
+					status: 'error' as const,
+					message: 'Ошибка при проверке работоспособности системы',
+				},
 				500,
-				error,
 			)
 		}
 	}

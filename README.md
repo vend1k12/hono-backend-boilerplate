@@ -1,6 +1,6 @@
 # 🚀 Hono Backend Boilerplate
 
-Современный и мощный шаблон бэкенда на Hono.js, Bun и Prisma с полной интеграцией аутентификации, логирования и валидации.
+Современный и мощный шаблон бэкенда на Hono.js, Bun и Prisma с полной интеграцией аутентификации, логирования, валидации и OpenAPI документации.
 
 ## ✨ Основные особенности
 
@@ -9,6 +9,7 @@
 - 📝 Структурированное логирование с [Winston](https://github.com/winstonjs/winston)
 - ✅ Валидация данных с [Zod](https://github.com/colinhacks/zod)
 - 🌐 REST API с [Hono.js](https://hono.dev/)
+- 📚 Автоматическая документация API через OpenAPI и Swagger UI
 - 🚦 Обработка ошибок и промежуточное ПО
 - 🔍 ESLint + Prettier для статического анализа и форматирования кода
 - 🔄 CI/CD через GitHub Actions
@@ -25,6 +26,7 @@
 - **Логирование:** Winston
 - **Валидация:** Zod
 - **Аутентификация:** better-auth
+- **Документация API:** OpenAPI + Swagger UI
 - **Линтинг:** ESLint + Prettier
 - **CI/CD:** GitHub Actions
 - **Хуки:** Husky + lint-staged
@@ -84,6 +86,7 @@ bun dev
 ```
 
 API будет доступен по адресу: http://localhost:3000
+Swagger UI будет доступен по адресу: http://localhost:3000/swagger или http://localhost:3000/api/ui
 
 ## 🔧 Доступные скрипты
 
@@ -140,8 +143,10 @@ src/
 │   ├── env.ts           # Валидация переменных окружения
 │   ├── errors.ts        # Обработка ошибок
 │   ├── logger.ts        # Настройка логирования
+│   ├── openapi.ts       # Конфигурация OpenAPI
 │   └── validation.ts    # Утилиты валидации
 ├── models/              # Модели данных
+│   ├── schemas/         # Схемы OpenAPI и валидации
 ├── routes/              # Маршруты API
 │   ├── health/          # Модуль проверки работоспособности
 │   │   ├── health.controller.ts
@@ -159,45 +164,84 @@ src/
 3. **Repository Pattern**: для работы с данными через Prisma
 4. **Middleware Pattern**: для обработки запросов
 5. **Error Handling**: централизованная обработка ошибок
+6. **OpenAPI**: документация API через декларативные схемы
 
-## 🌐 API Routes
+## 🌐 API Routes и документация
 
 - `GET /api/health` - Базовая проверка работоспособности API
 - `GET /api/health/extended` - Расширенная проверка включая соединение с БД
 - `/api/auth/*` - Маршруты аутентификации (предоставляются better-auth)
+- `GET /api/docs` - JSON-документация OpenAPI
+- `GET /api/ui` - Swagger UI интерфейс для API документации
+- `GET /swagger` - Редирект на Swagger UI
 
 ## 📝 Добавление новых модулей
 
 1. Создайте новую директорию в `src/routes/` для вашего модуля
-2. Создайте контроллер, маршрутизатор и индексный файл
-3. Зарегистрируйте новый маршрутизатор в `src/routes/index.ts`
+2. Создайте схемы в `src/models/schemas/`
+3. Создайте контроллер, маршрутизатор и индексный файл
+4. Зарегистрируйте новый маршрутизатор в `src/routes/index.ts`
 
-Пример добавления модуля для пользователей:
+Пример добавления модуля для пользователей с OpenAPI:
 
 ```typescript
+// src/models/schemas/users.schema.ts
+import { createRoute, z } from '@hono/zod-openapi'
+import { apiResponses } from '~/lib/openapi'
+
+const userSchema = z.object({
+	id: z.string(),
+	email: z.string().email(),
+	name: z.string().optional(),
+})
+
+export const getUsersRoute = createRoute({
+	method: 'get',
+	path: '/',
+	tags: ['users'],
+	summary: 'Получить список пользователей',
+	responses: {
+		200: {
+			description: 'Список пользователей',
+			content: {
+				'application/json': {
+					schema: z.object({
+						users: z.array(userSchema),
+					}),
+				},
+			},
+		},
+		401: apiResponses.Error401,
+		500: apiResponses.Error500,
+	},
+})
+
 // src/routes/users/users.controller.ts
 import { Context } from 'hono'
-import { catchAsync } from '~/lib/errors'
 import { prisma } from '~/lib/db'
 
 export class UsersController {
-	// Получить всех пользователей
-	getUsers = catchAsync(async (c: Context) => {
+	static async getUsers(c: Context) {
 		const users = await prisma.user.findMany({
 			select: { id: true, email: true, name: true },
 		})
 		return c.json({ users })
-	})
+	}
 }
 
 // src/routes/users/users.router.ts
-import { Hono } from 'hono'
-import { UsersController } from './users.controller'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { Handler } from 'hono'
+import { UsersController } from '~/controllers'
+import { catchAsync } from '~/lib/errors'
+import { getUsersRoute } from '~/models/schemas/users.schema'
 
-const usersRouter = new Hono()
-const controller = new UsersController()
+const usersRouter = new OpenAPIHono()
 
-usersRouter.get('/', controller.getUsers)
+usersRouter.openapi(
+	getUsersRoute,
+	catchAsync(c => UsersController.getUsers(c)) as Handler,
+)
 
 export { usersRouter }
 

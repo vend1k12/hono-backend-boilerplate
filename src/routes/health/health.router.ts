@@ -1,29 +1,27 @@
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { Handler } from 'hono'
 import { HealthController } from '~/controllers'
 import { catchAsync } from '~/lib/errors'
-import { BaseRouter } from '~/routes/base.router'
+import {
+	getExtendedHealthRoute,
+	getHealthRoute,
+} from '~/models/schemas/health.schema'
 
 /**
  * Маршрутизатор для эндпоинтов проверки работоспособности
  */
-export class HealthRouter extends BaseRouter {
-	constructor() {
-		super('/health')
-	}
+const healthRouter = new OpenAPIHono()
 
-	/**
-	 * Настройка маршрутов
-	 */
-	protected setupRoutes(): void {
-		// Базовая проверка работоспособности
-		this.router.get('/', c => HealthController.getHealth(c))
+// Базовая проверка работоспособности
+healthRouter.openapi(
+	getHealthRoute,
+	catchAsync(c => HealthController.getHealth(c)) as Handler,
+)
 
-		// Расширенная проверка работоспособности
-		this.router.get(
-			'/extended',
-			catchAsync(c => HealthController.getExtendedHealth(c)),
-		)
-	}
-}
+// Расширенная проверка работоспособности
+healthRouter.openapi(
+	getExtendedHealthRoute,
+	catchAsync(c => HealthController.getExtendedHealth(c)) as Handler,
+)
 
-// Создаем и экспортируем экземпляр маршрутизатора
-export const healthRouter = new HealthRouter().getRouter()
+export { healthRouter }

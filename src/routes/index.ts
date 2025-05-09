@@ -1,16 +1,23 @@
+import { OpenAPIHono } from '@hono/zod-openapi'
 import { Hono } from 'hono'
 
+import { addSwaggerUI, openApiConfig } from '~/lib/openapi'
 import { healthRouter } from './health'
 
 /**
  * Типы маршрутов для регистрации
  */
-type Routes = Record<string, Hono>
+type Routes = Record<string, Hono | OpenAPIHono>
 
 /**
- * Создаем основной маршрутизатор API
+ * Создаем основной маршрутизатор API с поддержкой OpenAPI
  */
-export const apiRoutes = new Hono()
+const apiRoutes = new OpenAPIHono()
+
+/**
+ * Настраиваем Swagger UI
+ */
+addSwaggerUI(apiRoutes)
 
 /**
  * Все доступные маршруты API
@@ -24,16 +31,32 @@ const routes: Routes = {
  * Регистрируем все определенные маршруты
  */
 Object.entries(routes).forEach(([path, router]) => {
-	apiRoutes.route(path, router)
+	apiRoutes.route(path, router as Hono)
 })
+
+/**
+ * Генерируем документацию OpenAPI
+ */
+apiRoutes.doc('/docs', {
+	openapi: '3.0.0',
+	...openApiConfig,
+})
+
+/**
+ * Экспортируем маршрутизатор API
+ */
+export { apiRoutes }
 
 /**
  * Вспомогательная функция для регистрации маршрутов
  * @param baseRouter - Базовый маршрутизатор
  * @param routes - Маршруты для регистрации
  */
-export function registerRoutes(baseRouter: Hono, routes: Routes): void {
+export function registerRoutes(
+	baseRouter: Hono | OpenAPIHono,
+	routes: Routes,
+): void {
 	Object.entries(routes).forEach(([path, router]) => {
-		baseRouter.route(path, router)
+		;(baseRouter as Hono).route(path, router as Hono)
 	})
 }

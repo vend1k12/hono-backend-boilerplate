@@ -75,9 +75,7 @@ export const errorHandler = async (err: Error, c: Context) => {
 
 	// В production не возвращаем детали ошибки клиенту
 	const message =
-		process.env.NODE_ENV === 'production'
-			? 'Что-то пошло не так'
-			: err.message
+		process.env.NODE_ENV === 'production' ? 'Что-то пошло не так' : err.message
 
 	return c.json(
 		{
@@ -103,4 +101,4 @@ export const catchAsync = (fn: (c: Context) => Promise<Response>) => {
 			return errorHandler(new Error(String(err)), c)
 		}
 	}
-} 
+}

@@ -22,10 +22,6 @@ const envSchema = z.object({
 
 	// Опциональные настройки (могут быть добавлены при необходимости)
 	APP_DOMAIN: z.string().optional(),
-	CORS_ORIGINS: z
-		.string()
-		.optional()
-		.transform(val => (val ? val.split(',') : [])),
 })
 
 /**

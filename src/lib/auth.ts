@@ -12,7 +12,7 @@ import { UnauthorizedError } from './errors'
 import { logger } from './logger'
 
 /**
- * Конфигурация аутентификации с использованием better-auth
+ * Конфигурация аутентификации
  */
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -48,7 +48,7 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				after: async (user, ctx) => {
+				after: async user => {
 					try {
 						const userCount = await prisma.user.count()
 						// Если это первый пользователь, назначаем ему роль администратора

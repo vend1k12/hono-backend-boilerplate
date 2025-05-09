@@ -52,6 +52,8 @@ app.route('/api', apiRoutes)
 // Обработка аутентификации
 app.on(['POST', 'GET'], '/api/auth/*', c => auth.handler(c.req.raw))
 
+app.get('/swagger', c => c.redirect('/api/ui'))
+
 // Обработка 404
 app.notFound(c => {
 	return c.json(
